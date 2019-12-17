@@ -1,2 +1,3 @@
 # colortracking
-pretty colors!!
+
+Object color tracking and color codes functionality
