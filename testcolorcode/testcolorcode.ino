@@ -1,14 +1,24 @@
 #include <Pixy2.h>
 #include <PIDLoop.h>
+#include <ZumoMotors.h>
+#include <ZumoBuzzer.h>
 
 Pixy2 pixy;
+ZumoMotors motors;
+ZumoBuzzer buzzer;
 PIDLoop panLoop(400, 0, 400, true);
 PIDLoop tiltLoop(500, 0, 500, true);
+
+#define leftSpeed 200
+#define rightSpeed 200
+
 
 void setup()
 {
   Serial.begin(115200);
   Serial.print("Starting...\n");
+
+  stopMotors();
  
   // We need to initialize the pixy object 
   pixy.init();
@@ -16,6 +26,11 @@ void setup()
   pixy.changeProg("color_connected_components");
   pixy.setLamp(1,1);
   pixy.setServos(500,200);
+  /*motors.setLeftSpeed(leftSpeed);
+  motors.setRightSpeed(-rightSpeed);
+  delay(500);
+  motors.setLeftSpeed(0);
+  motors.setRightSpeed(0);*/
 }
 
 void loop()
@@ -32,11 +47,7 @@ void loop()
   
   if (pixy.ccc.numBlocks)
   {        
-    i++;
-    
-    if (i%60==0)
-      Serial.println(i);   
-    
+     
     // calculate pan and tilt "errors" with respect to first object (blocks[0]), 
     // which is the biggest object (they are sorted by size).  
     panOffset = (int32_t)pixy.frameWidth/2 - (int32_t)pixy.ccc.blocks[0].m_x;
@@ -49,29 +60,34 @@ void loop()
     if(bnum < 3)
     {
       if((int32_t)pixy.ccc.blocks[bnum].m_signature == 1)
-        red = pixy.ccc.blocks[bnum];
+        blue = pixy.ccc.blocks[bnum];
   
       if((int32_t)pixy.ccc.blocks[bnum].m_signature == 2)
-        blue = pixy.ccc.blocks[bnum];
+        red = pixy.ccc.blocks[bnum];
         
       bnum++;
     }
 
-    /*Serial.println("First Object:");
-    Serial.print("x: ");
-    Serial.print((int32_t)pixy.ccc.blocks[0].m_x);
-    Serial.print("   ");
-    Serial.print("y: ");
-    Serial.println((int32_t)pixy.ccc.blocks[0].m_y);
-    Serial.println("Second Object:");
-    Serial.print("x: ");
-    Serial.print((int32_t)pixy.ccc.blocks[1].m_x);
-    Serial.print("   ");
-    Serial.print("y: ");
-    Serial.println((int32_t)pixy.ccc.blocks[1].m_y);
-    Serial.println("-----------------------");*/
+    if(blue.m_x < red.m_x)
+    {
+      Serial.println("Right");
+      motors.setLeftSpeed(leftSpeed);
+      motors.setRightSpeed(-rightSpeed);
+      delay(500);
+      stopMotors();
+    }
+  
+    if(red.m_x < blue.m_x)
+    {
+      Serial.println("Left");
+      motors.setLeftSpeed(-leftSpeed);
+      motors.setRightSpeed(rightSpeed);
+      delay(500);
+      stopMotors();
+    }
+      
 
-    Serial.println("Blue:");
+    /*Serial.println("Blue:");
     Serial.print("x: ");
     Serial.print(blue.m_x);
     Serial.print("   ");
@@ -83,7 +99,7 @@ void loop()
     Serial.print("   ");
     Serial.print("y: ");
     Serial.println(red.m_y);
-    Serial.println("-----------------------");
+    Serial.println("-----------------------");*/
   
     // set pan and tilt servos  
     //pixy.setServos(panLoop.m_command, tiltLoop.m_command);
@@ -100,4 +116,10 @@ void loop()
     tiltLoop.reset();
     pixy.setServos(panLoop.m_command, tiltLoop.m_command);
   }*/
+}
+
+void stopMotors()
+{
+  motors.setLeftSpeed(0);
+  motors.setRightSpeed(0);
 }
