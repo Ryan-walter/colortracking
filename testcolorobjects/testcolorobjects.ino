@@ -24,7 +24,7 @@ void setup()
   pixy.init();
   // Use color connected components program for the pan tilt to track 
   pixy.changeProg("color_connected_components");
-  pixy.setLamp(1,1);
+  pixy.setLamp(1,0);
   pixy.setServos(500,200);
   /*motors.setLeftSpeed(leftSpeed);
   motors.setRightSpeed(-rightSpeed);
@@ -40,7 +40,7 @@ void loop()
   char buf[64]; 
   int32_t panOffset, tiltOffset;
   int bnum = 0;
-  Block blue, red;
+  Block blue, red, purple;
   
   // get active blocks from Pixy
   pixy.ccc.getBlocks();
@@ -64,6 +64,10 @@ void loop()
   
       if((int32_t)pixy.ccc.blocks[bnum].m_signature == 2)
         red = pixy.ccc.blocks[bnum];
+
+      if((int32_t)pixy.ccc.blocks[bnum].m_signature == 3)
+        purple = pixy.ccc.blocks[bnum];
+      
         
       bnum++;
     }
@@ -71,19 +75,24 @@ void loop()
     if(blue.m_x < red.m_x)
     {
       Serial.println("Right");
-      motors.setLeftSpeed(leftSpeed);
+      /*motors.setLeftSpeed(leftSpeed);
       motors.setRightSpeed(-rightSpeed);
       delay(500);
-      stopMotors();
+      stopMotors();*/
+    }
+
+    if(blue.m_x < red.m_x < purple.m_x)
+    {
+      Serial.println("purple biggest");
     }
   
     if(red.m_x < blue.m_x)
     {
       Serial.println("Left");
-      motors.setLeftSpeed(-leftSpeed);
+      /*motors.setLeftSpeed(-leftSpeed);
       motors.setRightSpeed(rightSpeed);
       delay(500);
-      stopMotors();
+      stopMotors();*/
     }
       
 
