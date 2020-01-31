@@ -1,5 +1,12 @@
+// Necessary for bluetooth connection
 #include <SoftwareSerial.h>
 
+int bluetoothTx = 4;  // TX-O pin of bluetooth mate, Arduino D2
+int bluetoothRx = 5;  // RX-I pin of bluetooth mate, Arduino D3
+
+SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
+
+// Necessary for robot
 #include <Pixy2.h>
 #include <PIDLoop.h>
 #include <ZumoMotors.h>
@@ -16,11 +23,6 @@ ZumoMotors motors;
 ZumoBuzzer buzzer;
 
 PIDLoop headingLoop(5000, 0, 0, false);
-
-int bluetoothTx = 4;  // TX-O pin of bluetooth mate, Arduino D2
-int bluetoothRx = 5;  // RX-I pin of bluetooth mate, Arduino D3
-
-SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
 
 struct robot_commands
 {
@@ -40,6 +42,7 @@ robot_commands CommandList;
 
 void setup()
 {
+  // Set up for bluetooth communication 
   bluetooth.begin(115200);  // The Bluetooth Mate defaults to 115200bps
   bluetooth.print("$");  // Print three times individually
   bluetooth.print("$");
@@ -49,20 +52,16 @@ void setup()
   // 115200 can be too fast at times for NewSoftSerial to relay the data reliably
   bluetooth.begin(9600);  // Start bluetooth serial at 9600
 
-
+  
+  //Set up for robot to execute commands
   Serial.begin(9600);  // Begin the serial monitor at 9600bps
   Serial.print("Starting...\n");
   motors.setLeftSpeed(0);
   motors.setRightSpeed(0);
   pixy.init();
-  // Turn on both lamps, upper and lower for maximum exposure
-  pixy.setLamp(1, 1);
-  // change to the line_tracking program.  Note, changeProg can use partial strings, so for example,
-  // you can change to the line_tracking program by calling changeProg("line") instead of the whole
-  // string changeProg("line_tracking")
-  pixy.changeProg("line");
-  // look straight and down
-  pixy.setServos(500, 850);
+  pixy.setLamp(1, 1); // Turn on both lamps, upper and lower for maximum exposure
+  pixy.changeProg("line"); // change to the line_tracking program.
+  pixy.setServos(500, 850); // look straight and down
   pixy.line.setDefaultTurn(-90);
 }
 
@@ -70,10 +69,9 @@ void loop()
 {
   if (bluetooth.available()) // If the bluetooth sent any characters
   {
-    // Send any characters the bluetooth prints to the serial monitor
-    //Serial.print((char)bluetooth.read());
+    // Checks any characters the bluetooth prints
     char check = (char)bluetooth.read();
-    if (check == 'S')
+    if (check == 'S') // Denotes start marker for recieved commands
     {
       char buff[10];
       for (int x = 0; x < 10; x++)
@@ -81,7 +79,7 @@ void loop()
         buff[x] = (char)bluetooth.read();
       }
     }
-    else if (check == '0')
+    else if (check == '0') // Checks if it received command to turn left
     {
       Serial.println("Left");
       instruct = 0;
@@ -89,7 +87,7 @@ void loop()
       delay(1000);
       
     }
-    else if (check == '1')
+    else if (check == '1') // Checks if it received command to continue forward.
     {
       Serial.println("Forward");
       instruct = 1;
@@ -97,7 +95,7 @@ void loop()
       delay(1000);
       
     }
-    else if (check == '2')
+    else if (check == '2') // Checks if it received command to turn right
     {
       Serial.println("Right");
       instruct = 2;
@@ -111,8 +109,7 @@ void loop()
     // Send any characters the Serial monitor prints to the bluetooth
     bluetooth.print((char)Serial.read());
   }
-
-
+  
   // and loop forever and ever!
 }
 
@@ -123,7 +120,7 @@ void forward()
   int left, right;
   char buf[96];
 
-  if (res <= 0)
+  if (res <= 0) // If it does not see a line in front, it does nothing and returns.
   {
     motors.setLeftSpeed(0);
     motors.setRightSpeed(0);
@@ -143,7 +140,7 @@ void forward()
     Serial.print("Following a line. ");
     Serial.println(res);
 
-    if (pixy.line.vectors->m_y0 > pixy.line.vectors->m_y1) // Cehcks if y-coord of head is less than tail, which means vector is pointing forward.
+    if (pixy.line.vectors->m_y0 > pixy.line.vectors->m_y1) // Checks if y-coord of head is less than tail, which means vector is pointing forward.
     {
       if (pixy.line.vectors->m_flags & LINE_FLAG_INTERSECTION_PRESENT) // Slows down when intersection present.
       {
@@ -169,33 +166,36 @@ void forward()
 
   delay(5000);
 
-  instruct == 3;
-  stopMoving();
+  instruct == 3; // Resets intruct variable
+  stopMoving(); // Stops motors
+  return;
 }
 
-void right()
+void right() // Function to turn right
 {
   Serial.println("Turning right.");
   motors.setLeftSpeed(175);
   motors.setRightSpeed(-175);
   delay(500);
   keepTurning(instruct);
-  instruct == 3;
-  stopMoving();
+  instruct == 3; // Resets intruct variable
+  stopMoving(); // Stops motors
+  return;
 }
 
-void left()
+void left() // Function to turn left
 {
   Serial.println("Turning left");
   motors.setLeftSpeed(-175);
   motors.setRightSpeed(175);
   delay(550);
   keepTurning(instruct);
-  instruct == 3;
-  stopMoving();
+  instruct == 3; // Resets intruct variable
+  stopMoving(); // Stops motors
+  return;
 }
 
-void stopMoving() // Function created to stop motors
+void stopMoving() // Function to stop motors
 {
   motors.setLeftSpeed(0);
   motors.setRightSpeed(0);
