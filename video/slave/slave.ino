@@ -12,11 +12,13 @@ SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
 #include <ZumoMotors.h>
 #include <ZumoBuzzer.h>
 
-#define ZUMO_FAST        200
-#define ZUMO_SLOW        150
+#define ZUMO_FAST        190
+#define ZUMO_SLOW        140
+#define TURN_SPEED       174
 #define X_CENTER         (pixy.frameWidth/2)
 int intrsectcounter = 0;
 int instruct = 3;
+bool intr = false;
 
 Pixy2 pixy;
 ZumoMotors motors;
@@ -42,7 +44,7 @@ robot_commands CommandList;
 
 void setup()
 {
-  // Set up for bluetooth communication 
+  // Set up for bluetooth communication
   bluetooth.begin(115200);  // The Bluetooth Mate defaults to 115200bps
   bluetooth.print("$");  // Print three times individually
   bluetooth.print("$");
@@ -50,9 +52,10 @@ void setup()
   delay(100);  // Short delay, wait for the Mate to send back CMD
   bluetooth.println("U,9600,N");  // Temporarily Change the baudrate to 9600, no parity
   // 115200 can be too fast at times for NewSoftSerial to relay the data reliably
+  bluetooth.println("CFR"); // This command causes the device to connect and immediately go into fast data mode using the stored remote address (master)
   bluetooth.begin(9600);  // Start bluetooth serial at 9600
 
-  
+
   //Set up for robot to execute commands
   Serial.begin(9600);  // Begin the serial monitor at 9600bps
   Serial.print("Starting...\n");
@@ -84,24 +87,23 @@ void loop()
       Serial.println("Left");
       instruct = 0;
       left();
-      delay(1000);
-      
+      delay(2000);
+
     }
     else if (check == '1') // Checks if it received command to continue forward.
     {
       Serial.println("Forward");
       instruct = 1;
       forward();
-      delay(1000);
-      
+      delay(2000);
+
     }
     else if (check == '2') // Checks if it received command to turn right
     {
       Serial.println("Right");
       instruct = 2;
       right();
-      delay(1000);
-      
+      delay(2000);
     }
   }
   if (Serial.available()) // If stuff was typed in the serial monitor
@@ -109,7 +111,7 @@ void loop()
     // Send any characters the Serial monitor prints to the bluetooth
     bluetooth.print((char)Serial.read());
   }
-  
+
   // and loop forever and ever!
 }
 
@@ -119,7 +121,7 @@ void forward()
   int32_t error;
   int left, right;
   char buf[96];
-
+  res = pixy.line.getMainFeatures();
   if (res <= 0) // If it does not see a line in front, it does nothing and returns.
   {
     motors.setLeftSpeed(0);
@@ -147,6 +149,7 @@ void forward()
         left += ZUMO_SLOW;
         right += ZUMO_SLOW;
         Serial.println("Slowing down for intersection.");
+        intr = true;
       }
       else // Else continues forward.
       {
@@ -162,21 +165,27 @@ void forward()
     }
     motors.setLeftSpeed(left);
     motors.setRightSpeed(right);
+    delay(200);
+
+    if (intr)
+    {
+      delay(250);
+      instruct == 3; // Resets intruct variable
+      stopMoving(); // Stops motors
+      intr = false;
+      return;
+    }
+    else
+    forward();
   }
-
-  delay(5000);
-
-  instruct == 3; // Resets intruct variable
-  stopMoving(); // Stops motors
-  return;
 }
 
 void right() // Function to turn right
 {
   Serial.println("Turning right.");
-  motors.setLeftSpeed(175);
-  motors.setRightSpeed(-175);
-  delay(500);
+  motors.setLeftSpeed(TURN_SPEED);
+  motors.setRightSpeed(-TURN_SPEED);
+  delay(600);
   keepTurning(instruct);
   instruct == 3; // Resets intruct variable
   stopMoving(); // Stops motors
@@ -186,9 +195,9 @@ void right() // Function to turn right
 void left() // Function to turn left
 {
   Serial.println("Turning left");
-  motors.setLeftSpeed(-175);
-  motors.setRightSpeed(175);
-  delay(550);
+  motors.setLeftSpeed(-TURN_SPEED);
+  motors.setRightSpeed(TURN_SPEED);
+  delay(600);
   keepTurning(instruct);
   instruct == 3; // Resets intruct variable
   stopMoving(); // Stops motors
@@ -215,14 +224,14 @@ void keepTurning(int x) // Function meant to override parts of code so robot beh
     if (direc == 0) // Checks if previously turning left.
     {
       Serial.println("Continuing left turn.");
-      motors.setLeftSpeed(-175);
-      motors.setRightSpeed(175);
+      motors.setLeftSpeed(-TURN_SPEED);
+      motors.setRightSpeed(TURN_SPEED);
     }
     if (direc == 2) // Checks if previously turning right.
     {
       Serial.println("Continuing right turn.");
-      motors.setLeftSpeed(175);
-      motors.setRightSpeed(-175);
+      motors.setLeftSpeed(TURN_SPEED);
+      motors.setRightSpeed(-TURN_SPEED);
     }
   }
 
@@ -230,20 +239,22 @@ void keepTurning(int x) // Function meant to override parts of code so robot beh
   {
     if (direc == 0) // Checks if previously turning left.
     {
-      while (pixy.line.vectors->m_x0 > pixy.line.vectors->m_x1) // Continues to turn until tail cordinate of vector is greater than the coordinate for the head.
+      while (pixy.line.vectors->m_x1 < 39) // Continues to turn until tail cordinate of vector is greater than the coordinate for the head.
       { // Signifies that robot fully turned 90 degrees.
+        res = pixy.line.getMainFeatures();
         Serial.println("Finishing left turn.");
-        motors.setLeftSpeed(-175);
-        motors.setRightSpeed(175);
+        motors.setLeftSpeed(-TURN_SPEED);
+        motors.setRightSpeed(TURN_SPEED);
       }
     }
     if (direc == 2) // Checks if previously turning left.
     {
-      while (pixy.line.vectors->m_x0 > pixy.line.vectors->m_x1) // Continues to turn until tail cordinate of vector is less than the coordinate for the head.
+      while (39 < pixy.line.vectors->m_x1) // Continues to turn until tail cordinate of vector is less than the coordinate for the head.
       { // Signifies that robot fully turned 90 degrees.
+        res = pixy.line.getMainFeatures();
         Serial.println("Finishing right turn.");
-        motors.setLeftSpeed(175);
-        motors.setRightSpeed(-175);
+        motors.setLeftSpeed(TURN_SPEED);
+        motors.setRightSpeed(-TURN_SPEED);
         //Serial.println(pixy.line.vectors->m_x0);
         //Serial.println(pixy.line.vectors->m_x1);
       }
