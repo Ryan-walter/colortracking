@@ -12,9 +12,9 @@ SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
 #include <ZumoMotors.h>
 #include <ZumoBuzzer.h>
 
-#define ZUMO_FAST        170 //210
-#define ZUMO_SLOW        150
-#define TURN_SPEED       265
+#define ZUMO_FAST        130 //210
+#define ZUMO_SLOW        110
+#define TURN_SPEED       200
 #define X_CENTER         (pixy.frameWidth/2)
 int intrsectcounter = 0;
 int instruct = 3;
@@ -50,13 +50,13 @@ void setup()
   pixy.setLamp(1, 0); // Turn on both lamps, upper and lower for maximum exposure
   pixy.changeProg("line"); // change to the line_tracking program.
   pixy.setServos(550, 850); // look straight and down
-  
+
 }
 
 void loop()
 {
   /*if (bluetooth.available()) // If the bluetooth sent any characters
-  {
+    {
     // Checks any characters the bluetooth prints
     char check = (char)bluetooth.read();
     if (check == 'S') // Denotes start marker for recieved commands
@@ -90,11 +90,12 @@ void loop()
       right();
       delay(2000);
     }
-  }*/
+    }*/
 
-  delay(1000);
   forward();
-  
+  delay(1000);
+  right();
+
   if (Serial.available()) // If stuff was typed in the serial monitor
   {
     // Send any characters the Serial monitor prints to the bluetooth
@@ -110,8 +111,9 @@ void forward()
   int32_t error;
   int left, right;
   char buf[96];
-  res = pixy.line.getMainFeatures();
+  res = pixy.line.getAllFeatures();
   Serial.println(res);
+
   if (res <= 0) // If it does not see a line in front, it does nothing and returns.
   {
     motors.setLeftSpeed(0);
@@ -134,7 +136,9 @@ void forward()
 
     if (pixy.line.vectors->m_y0 > pixy.line.vectors->m_y1) // Checks if y-coord of head is less than tail, which means vector is pointing forward.
     {
-      if (pixy.line.vectors->m_flags & LINE_FLAG_INTERSECTION_PRESENT) // Slows down when intersection present.
+
+      //if (pixy.line.vectors->m_flags & LINE_FLAG_INTERSECTION_PRESENT) // Slows down when intersection present.
+      if (pixy.line.numVectors > 2)
       {
         left += ZUMO_SLOW;
         right += ZUMO_SLOW;
