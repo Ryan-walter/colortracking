@@ -12,7 +12,7 @@ SoftwareSerial bluetooth(bluetoothTx, bluetoothRx);
 #include <ZumoMotors.h>
 #include <ZumoBuzzer.h>
 
-#define ZUMO_FAST        130 //210
+#define ZUMO_FAST        130
 #define ZUMO_SLOW        110
 #define TURN_SPEED       200
 #define X_CENTER         (pixy.frameWidth/2)
@@ -55,8 +55,8 @@ void setup()
 
 void loop()
 {
-  /*if (bluetooth.available()) // If the bluetooth sent any characters
-    {
+  if (bluetooth.available()) // If the bluetooth sent any characters
+  {
     // Checks any characters the bluetooth prints
     char check = (char)bluetooth.read();
     if (check == 'S') // Denotes start marker for recieved commands
@@ -90,11 +90,7 @@ void loop()
       right();
       delay(2000);
     }
-    }*/
-
-  forward();
-  delay(1000);
-  right();
+  }
 
   if (Serial.available()) // If stuff was typed in the serial monitor
   {
@@ -111,7 +107,7 @@ void forward()
   int32_t error;
   int left, right;
   char buf[96];
-  res = pixy.line.getAllFeatures();
+  res = pixy.line.getAllFeatures(); // getAllFeatures neccessary instead of getMainFeatures, to detect intersections
   Serial.println(res);
 
   if (res <= 0) // If it does not see a line in front, it does nothing and returns.
@@ -137,8 +133,7 @@ void forward()
     if (pixy.line.vectors->m_y0 > pixy.line.vectors->m_y1) // Checks if y-coord of head is less than tail, which means vector is pointing forward.
     {
 
-      //if (pixy.line.vectors->m_flags & LINE_FLAG_INTERSECTION_PRESENT) // Slows down when intersection present.
-      if (pixy.line.numVectors > 2)
+      if (pixy.line.numVectors > 2) // Slows down when Pixy sees 3 lines or more, indicating that an intersection is present.
       {
         left += ZUMO_SLOW;
         right += ZUMO_SLOW;
@@ -162,15 +157,15 @@ void forward()
     motors.setRightSpeed(right);
     delay(200);
 
-    if (intr)
+    if (intr) // If it detected an intersection, deadheads robot to a stop
     {
       delay(200);
       instruct == 3; // Resets intruct variable
       stopMoving(); // Stops motors
-      intr = false;
+      intr = false; // Resets intersection variable
       return;
     }
-    else
+    else // Else continues moving forward
       forward();
   }
 }
